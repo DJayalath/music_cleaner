@@ -27,7 +27,14 @@ fn main() {
     };
 
     // Recursively scan folders for flacs
-    recursive_find(folders);
+    let mut deep_files: Vec<fs::DirEntry> = Vec::new();
+    recursive_find(folders, &mut deep_files);
+    println!("\nFound {} deep files:\n", deep_files.len());
+    for f in &deep_files {
+        println!("{:?}", f.file_name());
+    }
+
+
 }
 
 fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
@@ -52,18 +59,19 @@ fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), 
     Ok((files, folders))
 }
 
-fn recursive_find(folders: Vec<fs::DirEntry>) {
+fn recursive_find(folders: Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry>) {
 
-    println!();
+    // println!();
     if folders.len() == 0 {
         return
     }
     for folder in folders {
         let (deep_files, deep_folders) = scan_path(folder.path().to_str().unwrap()).unwrap();
         for file in deep_files {
-            println!("{:?}", file.file_name());
+            found_files.push(file);
+            // println!("{:?}", file.file_name());
         }
-        recursive_find(deep_folders);
+        recursive_find(deep_folders, found_files);
     }
 
 }
