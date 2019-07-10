@@ -1,13 +1,15 @@
 use std::fs;
 use std::path::Path;
 use std::ffi::OsStr;
+use std::ffi::OsString;
 
 fn main() {
 
-    let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
+    let mypath = "C:/Users/dhjay/Music/Music/";
 
+    let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
     // Scan files and folders in directory
-    let (files, folders) = match scan_path("C:/Users/dhjay/Music/Music") {
+    let (files, folders) = match scan_path(mypath) {
 
         Ok((fi, fo)) => {
         
@@ -30,7 +32,7 @@ fn main() {
 
     // Recursively scan folders for flacs
     let mut deep_files: Vec<fs::DirEntry> = Vec::new();
-    recursive_find(folders, &mut deep_files);
+    recursive_find(&folders, &mut deep_files);
     println!("\nFound {} deep files:\n", deep_files.len());
     for f in &deep_files {
         println!("{:?}", f.file_name());
@@ -43,11 +45,22 @@ fn main() {
         match path.extension() {
             Some(val) => {
                 if file_extensions.contains(&val) {
-                    println!("{:?}", file.file_name());
+                    println!("{}", file.file_name().into_string().unwrap());
+                    let destination = format!("{}{}", mypath, file.file_name().into_string().unwrap());
+
+                    // Copy over
+                    fs::copy(file.path(), destination).unwrap();
                 }
             },
             None => ()
         };
+    }
+
+    // Remove folders
+    for folder in folders {
+        if !folder.file_name().into_string().unwrap().starts_with(".") {
+            fs::remove_dir_all(folder.path()).unwrap();
+        }
     }
 }
 
@@ -73,7 +86,7 @@ fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), 
     Ok((files, folders))
 }
 
-fn recursive_find(folders: Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry>) {
+fn recursive_find(folders: &Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry>) {
 
     // println!();
     if folders.len() == 0 {
@@ -85,7 +98,7 @@ fn recursive_find(folders: Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry
             found_files.push(file);
             // println!("{:?}", file.file_name());
         }
-        recursive_find(deep_folders, found_files);
+        recursive_find(&deep_folders, found_files);
     }
 
 }
