@@ -11,4 +11,4 @@ Many music downloads come in folders with artist name and album subfolders. Thes
 itself will contain artist and album metadata read by music players. This program helps to organise your tracks by moving music files out of subfolders and into the root folder so all your tracks are in one place.
 
 ## Usage
-For building: cargo run path-to-directory
+For building: `cargo run <path-to-directory>`
