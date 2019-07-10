@@ -2,10 +2,12 @@ use std::fs;
 use std::path::Path;
 use std::ffi::OsStr;
 use std::error::Error;
+use std::env;
 
 fn main() {
 
-    let mypath = "C:/Users/dhjay/Music/Music/";
+    let args: Vec<String> = env::args().collect();
+    let mypath = &args[1];
 
     // Set flle extensions to keep
     let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
@@ -13,7 +15,7 @@ fn main() {
     println!("Found:");
 
     // Scan files and folders in directory
-    let (files, folders) = match scan_path(mypath) {
+    let (_files, folders) = match scan_path(mypath) {
 
         Ok((fi, fo)) => {
         
@@ -43,7 +45,7 @@ fn main() {
     // }
 
     println!("\nExtracting...");
-    if let Err(e) = extract_music(&deep_files, &file_extensions, String::from(mypath)) {
+    if let Err(e) = extract_music(&deep_files, &file_extensions, &mut mypath.clone()) {
         panic!("ERROR: {}", e);
     }
 
@@ -98,7 +100,11 @@ fn recursive_find(folders: &Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntr
 
 }
 
-fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origin: String) -> Result<(), Box<dyn Error>> {
+fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origin: &mut String) -> Result<(), Box<dyn Error>> {
+
+    if !(origin.ends_with("/") || origin.ends_with("\\")) {
+        origin.push('/');
+    }
 
     for file in files {
         let path = file.path();
