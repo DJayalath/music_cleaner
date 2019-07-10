@@ -36,14 +36,18 @@ fn main() {
         println!("{:?}", f.file_name());
     }
 
-    println!("\nOf which are FLACs:\n");
+    println!("\nOf which are music:\n");
     for file in deep_files {
         let path = file.path();
         let path = Path::new(&path);
-        let path = path.extension().unwrap();
-        if file_extensions.contains(&path) {
-            println!("{:?}", file.file_name());
-        }
+        match path.extension() {
+            Some(val) => {
+                if file_extensions.contains(&val) {
+                    println!("{:?}", file.file_name());
+                }
+            },
+            None => ()
+        };
     }
 }
 
