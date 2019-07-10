@@ -64,7 +64,17 @@ fn main() {
 
     println!("Complete!");
 
+    // // Rescan for renaming
+    // let (files, folders) = match scan_path(mypath) {
+
+    //     Ok((fi, fo)) => { }
+    //     Err(e) => panic!("ERROR: {}", e)
+    // };
+
     for file in files {
+        rename_file_with_metadata(file, &mut mypath.clone());
+    }
+    for file in deep_files {
         rename_file_with_metadata(file, &mut mypath.clone());
     }
 
@@ -147,19 +157,19 @@ fn rename_file_with_metadata(file: fs::DirEntry, origin: &mut String) {
             match tag.get_vorbis("title") {
                 Some(val) => {
                     for s in val {
-                        println!("{}", s);
+                        // println!("{}", s);
+                        let s = s.replace(&['<', '>', ':', '"', '/', '\\', '|', '?', '*'][..], "");
                         let destination = format!("{}{}.flac", origin, s);
-                        if !(s.contains("?") || s.contains("/") || s.contains('"')) {
-                            println!("{} {}", destination, file.path().to_str().unwrap());
-                            fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
-                        }
+                        println!("{}, {}", s, file.file_name().into_string().unwrap());
+                            // println!("{} {}", destination, file.path().to_str().unwrap());
+                        fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
                     }
                 },
                 None => ()
             }
         }
 
-        Err(e) => ()
+        Err(e) => println!("ERROR: {} on {}", e, file.file_name().into_string().unwrap())
 
     }
 
