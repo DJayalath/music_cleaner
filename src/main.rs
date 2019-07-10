@@ -4,6 +4,8 @@ use std::ffi::OsStr;
 
 fn main() {
 
+    let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
+
     // Scan files and folders in directory
     let (files, folders) = match scan_path("C:/Users/dhjay/Music/Music") {
 
@@ -34,7 +36,15 @@ fn main() {
         println!("{:?}", f.file_name());
     }
 
-
+    println!("\nOf which are FLACs:\n");
+    for file in deep_files {
+        let path = file.path();
+        let path = Path::new(&path);
+        let path = path.extension().unwrap();
+        if file_extensions.contains(&path) {
+            println!("{:?}", file.file_name());
+        }
+    }
 }
 
 fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
