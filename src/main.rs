@@ -1,3 +1,6 @@
+extern crate metaflac;
+
+use metaflac::{Tag, Block, BlockType};
 use std::fs;
 use std::path::Path;
 use std::ffi::OsStr;
@@ -9,13 +12,15 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mypath = &args[1];
 
+    // TODO: Allow specifying custom file extensions
+
     // Set flle extensions to keep
     let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
 
     println!("Found:");
 
     // Scan files and folders in directory
-    let (_files, folders) = match scan_path(mypath) {
+    let (files, folders) = match scan_path(mypath) {
 
         Ok((fi, fo)) => {
         
@@ -58,6 +63,11 @@ fn main() {
     }
 
     println!("Complete!");
+
+    for file in files {
+        rename_file_with_metadata(file, &mut mypath.clone());
+    }
+
 }
 
 fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
@@ -123,4 +133,35 @@ fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origi
     }
 
     Ok(())
+}
+
+fn rename_file_with_metadata(file: fs::DirEntry, origin: &mut String) {
+
+    if !(origin.ends_with("/") || origin.ends_with("\\")) {
+        origin.push('/');
+    }
+
+    match Tag::read_from_path(file.path()) {
+
+        Ok(tag) => {
+            match tag.get_vorbis("title") {
+                Some(val) => {
+                    for s in val {
+                        println!("{}", s);
+                        let destination = format!("{}{}.flac", origin, s);
+                        if !(s.contains("?") || s.contains("/") || s.contains('"')) {
+                            println!("{} {}", destination, file.path().to_str().unwrap());
+                            fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
+                        }
+                    }
+                },
+                None => ()
+            }
+        }
+
+        Err(e) => ()
+
+    }
+
+    // println!("{}",tag.get_vorbis("vendor").unwrap());
 }
