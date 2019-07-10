@@ -1,9 +1,11 @@
 use std::fs;
+use std::path::Path;
+use std::ffi::OsStr;
 
 fn main() {
 
     // Scan files and folders in directory
-    let (files, folders) = match scan_path() {
+    let (files, folders) = match scan_path("C:/Users/dhjay/Music/Music") {
 
         Ok((fi, fo)) => {
         
@@ -23,11 +25,14 @@ fn main() {
         Err(e) => panic!("ERROR: {}", e)
 
     };
+
+    // Recursively scan folders for flacs
+    recursive_find(folders);
 }
 
-fn scan_path() -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
+fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
 
-    let paths = fs::read_dir("C:/Users/dhjay/Music/Music")?;
+    let paths = fs::read_dir(directory)?;
 
     let mut files = Vec::new();
     let mut folders = Vec::new();
@@ -45,4 +50,20 @@ fn scan_path() -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error>
     }
 
     Ok((files, folders))
+}
+
+fn recursive_find(folders: Vec<fs::DirEntry>) {
+
+    println!();
+    if folders.len() == 0 {
+        return
+    }
+    for folder in folders {
+        let (deep_files, deep_folders) = scan_path(folder.path().to_str().unwrap()).unwrap();
+        for file in deep_files {
+            println!("{:?}", file.file_name());
+        }
+        recursive_find(deep_folders);
+    }
+
 }
