@@ -11,8 +11,6 @@ use std::process;
 
 fn main() {
 
-    // TODO: Allow specifying custom file extensions
-
     let args: Vec<String> = env::args().collect();
 
     if args.len() < 4 {
@@ -31,6 +29,12 @@ fn main() {
     // Set flle extensions to keep
     let mut file_extensions = Vec::new();
 
+    let extensions = &args[3];
+    let extensions: Vec<&str> = extensions.split(",").collect();
+    for extension in extensions {
+        file_extensions.push(OsStr::new(extension));
+    }
+
     let option = &args[2];
     match &option[..] {
         "-e" | "--extract" => extract(origin, &file_extensions),
@@ -41,12 +45,6 @@ fn main() {
             print_usage();
             process::exit(1);
         }
-    }
-
-    let extensions = &args[3];
-    let extensions: Vec<&str> = extensions.split(",").collect();
-    for extension in extensions {
-        file_extensions.push(OsStr::new(extension));
     }
 
     println!("Complete!");
