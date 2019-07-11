@@ -18,7 +18,7 @@ Example usage:
 ## What does it do?
 ### Extraction
 - Scans given folder for files and subfolders
-- Recursively copies music files (extensions .flac, .mp3, .webm) from subfolders to root folder
+- Recursively copies music files with specified extensions from subfolders to root folder
 - Deletes all subfolders
 ### Renaming
 - Collects track title and artist name from file metadata
@@ -71,3 +71,8 @@ After:
 Africa - Toto.flac
 Carry on Wayward Son - Kansas.flac
 ```
+
+## Notes, warnings and disclaimers
+- Do not put `music_cleaner.exe` in your music folder. Always use it from outside and specify a path to the music folder.
+- File renaming currently only works for `.flac` files. It will ignore all others.
+- Always make a backup of your directory and be VERY careful with the directory path you specify.
