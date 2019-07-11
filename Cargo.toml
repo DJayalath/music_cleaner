@@ -6,3 +6,4 @@ edition = "2018"
 
 [dependencies]
 metaflac = "0.1.8"
+structopt = "0.2.18"
