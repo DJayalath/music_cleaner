@@ -2,8 +2,9 @@
 A music directory clean up utility.
 
 ## Usage
+- Open a powershell instance in the folder containing `music_cleaner.exe`
 ```
-usage: music_cleaner.exe directory [options]
+usage: ./music_cleaner.exe directory [options]
   options:
       -e, --extract   Moves files from subfolder to root and deletes subfolders
       -r, --rename    Renames files in root folder using format Title - Artist
