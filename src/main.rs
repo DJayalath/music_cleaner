@@ -20,7 +20,7 @@ fn main() {
     println!("Found:");
 
     // Scan files and folders in directory
-    let (files, folders) = match scan_path(mypath) {
+    let (_files, folders) = match scan_path(mypath) {
 
         Ok((fi, fo)) => {
         
@@ -62,21 +62,21 @@ fn main() {
         }
     }
 
-    println!("Complete!");
+    println!("Updating directories...");
+    // Rescan for renaming
+    let (files, _folders) = match scan_path(mypath) {
 
-    // // Rescan for renaming
-    // let (files, folders) = match scan_path(mypath) {
+        Ok((fi, fo)) => (fi, fo),
+        Err(e) => panic!("ERROR: {}", e)
+    };
 
-    //     Ok((fi, fo)) => { }
-    //     Err(e) => panic!("ERROR: {}", e)
-    // };
-
+    println!("Renaming files...");
+    // Rename!
     for file in files {
         rename_file_with_metadata(file, &mut mypath.clone());
     }
-    for file in deep_files {
-        rename_file_with_metadata(file, &mut mypath.clone());
-    }
+
+    println!("Complete!");
 
 }
 
@@ -104,7 +104,6 @@ fn scan_path(directory: &str) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), 
 
 fn recursive_find(folders: &Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry>) {
 
-    // println!();
     if folders.len() == 0 {
         return
     }
@@ -113,7 +112,6 @@ fn recursive_find(folders: &Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntr
         let (deep_files, deep_folders) = scan_path(folder.path().to_str().unwrap()).unwrap();
         for file in deep_files {
             found_files.push(file);
-            // println!("{:?}", file.file_name());
         }
         recursive_find(&deep_folders, found_files);
     }
@@ -132,9 +130,7 @@ fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origi
         match path.extension() {
             Some(val) => {
                 if file_extensions.contains(&val) {
-                    // println!("{}", file.file_name().into_string().unwrap());
                     let destination = format!("{}{}", origin, file.file_name().into_string().unwrap());
-                    // Copy over
                     fs::copy(file.path(), destination)?;
                 }
             },
@@ -154,24 +150,26 @@ fn rename_file_with_metadata(file: fs::DirEntry, origin: &mut String) {
     match Tag::read_from_path(file.path()) {
 
         Ok(tag) => {
-            match tag.get_vorbis("title") {
-                Some(val) => {
-                    for s in val {
-                        // println!("{}", s);
-                        let s = s.replace(&['<', '>', ':', '"', '/', '\\', '|', '?', '*'][..], "");
-                        let destination = format!("{}{}.flac", origin, s);
-                        println!("{}, {}", s, file.file_name().into_string().unwrap());
-                            // println!("{} {}", destination, file.path().to_str().unwrap());
-                        fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
-                    }
-                },
-                None => ()
-            }
+
+            let artist = match tag.get_vorbis("artist") {
+                Some(a) => a[0].clone(),
+                None => String::from("Unknown")
+            };
+            let title = match tag.get_vorbis("title") {
+                Some(t) => t[0].clone(),
+                None => String::from("Unknown")
+            };
+
+            // Remove any Windows special characters
+            let artist = artist.replace(&['<', '>', ':', '"', '/', '\\', '|', '?', '*'][..], "");
+            let title = title.replace(&['<', '>', ':', '"', '/', '\\', '|', '?', '*'][..], "");
+
+            // Format final name and directory
+            let destination = format!("{}{} - {}.flac", origin, title, artist);
+
+            fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
         }
 
-        Err(e) => println!("ERROR: {} on {}", e, file.file_name().into_string().unwrap())
-
+        Err(e) => println!("Skipped {} because of error {}", file.file_name().into_string().unwrap(), e)
     }
-
-    // println!("{}",tag.get_vorbis("vendor").unwrap());
 }
