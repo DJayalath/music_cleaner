@@ -15,8 +15,8 @@ fn main() {
 
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 3 {
-        println!("No path/args specified!");
+    if args.len() < 4 {
+        println!("No path/args/file extensions specified!");
         print_usage();
         process::exit(1);
     }
@@ -29,7 +29,7 @@ fn main() {
     }
 
     // Set flle extensions to keep
-    let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
+    let mut file_extensions = Vec::new();
 
     let option = &args[2];
     match &option[..] {
@@ -41,6 +41,12 @@ fn main() {
             print_usage();
             process::exit(1);
         }
+    }
+
+    let extensions = &args[3];
+    let extensions: Vec<&str> = extensions.split(",").collect();
+    for extension in extensions {
+        file_extensions.push(OsStr::new(extension));
     }
 
     println!("Complete!");
@@ -210,9 +216,11 @@ fn pause() {
 }
 
 fn print_usage() {
-    println!("usage: music_cleaner.exe directory [options]");
+    println!("usage: music_cleaner.exe directory [options] [file extensions]");
     println!("  options:");
     println!("      -e, --extract   Moves files from subfolder to root and deletes subfolders");
     println!("      -r, --rename    Renames files in root folder using format Title - Artist");
     println!("      -er, --both     Moves and renames files");
+    println!("  file extensions (comma separated list):");
+    println!("      example: flac,mp3,webm");
 }
