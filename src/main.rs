@@ -50,9 +50,12 @@ fn main() {
 
     };
 
-    // Recursively scan folders for flacs (UNSAFE)
+    // Recursively scan folders for flacs
     let mut deep_files: Vec<fs::DirEntry> = Vec::new();
-    recursive_find(&folders, &mut deep_files);
+    if let Err(e) = recursive_find(&folders, &mut deep_files) {
+        println!("ERROR: {}", e);
+        process::exit(1);
+    }
     println!("  => {} files nested in folders", deep_files.len());
 
     println!("\nExtracting...");
@@ -79,7 +82,9 @@ fn main() {
     println!("Renaming files...");
     // Rename!
     for file in files {
-        rename_file_with_metadata(file, origin);
+        if let Err(e) = rename_file_with_metadata(&file, origin) {
+            println!("Skipped {} because {}", &file.file_name().into_string().unwrap(), e);
+        }
     }
 
     println!("Complete!");
@@ -109,20 +114,21 @@ fn scan_path(directory: &Path) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>),
     Ok((files, folders))
 }
 
-fn recursive_find(folders: &Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry>) {
+fn recursive_find(folders: &Vec<fs::DirEntry>, found_files: &mut Vec<fs::DirEntry>) -> Result<(), Box<dyn Error>> {
 
     if folders.len() == 0 {
-        return
+        return Ok(())
     }
     for folder in folders {
         
-        let (deep_files, deep_folders) = scan_path(folder.path().as_path()).unwrap();
+        let (deep_files, deep_folders) = scan_path(folder.path().as_path())?;
         for file in deep_files {
             found_files.push(file);
         }
-        recursive_find(&deep_folders, found_files);
+        recursive_find(&deep_folders, found_files)?;
     }
 
+    Ok(())
 }
 
 fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origin: &Path) -> Result<(), Box<dyn Error>> {
@@ -144,7 +150,7 @@ fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origi
     Ok(())
 }
 
-fn rename_file_with_metadata(file: fs::DirEntry, origin: &Path) {
+fn rename_file_with_metadata(file: &fs::DirEntry, origin: &Path) -> Result<(), String> {
 
     match Tag::read_from_path(&file.path()) {
 
@@ -152,16 +158,16 @@ fn rename_file_with_metadata(file: fs::DirEntry, origin: &Path) {
 
             let artist = match tag.get_vorbis("artist") {
                 Some(a) => a[0].clone(),
-                None => String::from("Unknown"),
+                None => return Err(String::from(format!("failed to get artist name"))),
             };
             let title = match tag.get_vorbis("title") {
                 Some(t) => t[0].clone(),
-                None => String::from("Unknown"),
+                None => return Err(String::from(format!("failed to get song title"))),
             };
             let path = file.path();
             let ext = match path.extension() {
                 Some(e) => e,
-                None => OsStr::new("err"),
+                None => return Err(String::from(format!("failed to get file extension"))),
             };
 
             // Remove any Windows special characters
@@ -171,11 +177,15 @@ fn rename_file_with_metadata(file: fs::DirEntry, origin: &Path) {
             // Format final name and directory
             let destination = origin.join(format!("{} - {}.{}", title, artist, ext.to_str().unwrap()));
 
-            fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
+            if let Err(e) = fs::rename(file.path(), destination) {
+                return Err(format!("{}", e));
+            }
         }
 
-        Err(e) => println!("Skipped {} because of error {}", file.file_name().into_string().unwrap(), e)
+        Err(e) => return Err(format!("{}", e)),
     }
+
+    Ok(())
 }
 
 fn pause() {
