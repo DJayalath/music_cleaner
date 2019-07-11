@@ -11,30 +11,45 @@ use std::process;
 
 fn main() {
 
+    // TODO: Allow specifying custom file extensions
+
     let args: Vec<String> = env::args().collect();
 
-    if args.len() == 1 {
-        println!("No args specified!");
-        println!("usage: music_cleaner.exe directory [options]");
-        println!("  options:");
-        println!("      -r, --rename    Renames files using metadata in format Title - Artist");
-        println!("      -s, --skip      Skips directory extraction and renames files in root folder");
+    if args.len() < 3 {
+        println!("No path/args specified!");
+        print_usage();
         process::exit(1);
     }
 
     let origin = Path::new(&args[1]);
     if !origin.exists() {
         println!("Given path doesn't exist!");
+        print_usage();
         process::exit(1);
     }
-
-    // TODO: Allow specifying custom file extensions
 
     // Set flle extensions to keep
     let file_extensions = vec![OsStr::new("flac"), OsStr::new("mp3"), OsStr::new("webm")];
 
-    println!("Found:");
+    let option = &args[2];
+    match &option[..] {
+        "-e" | "--extract" => extract(origin, &file_extensions),
+        "-r" | "--rename" => rename(origin),
+        "-er" | "--both" => {extract(origin, &file_extensions); rename(origin);},
+        _ => {
+            println!("Invalid option!");
+            print_usage();
+            process::exit(1);
+        }
+    }
 
+    println!("Complete!");
+
+    pause();
+}
+
+fn extract(origin: &Path, file_extensions: &Vec<&std::ffi::OsStr>) {
+    println!("Found:");
     // Scan files and folders in directory
     let (_files, folders) = match scan_path(origin) {
 
@@ -71,6 +86,9 @@ fn main() {
         }
     }
 
+}
+
+fn rename(origin: &Path) {
     println!("Updating directories...");
     // Rescan for renaming
     let (files, _folders) = match scan_path(origin) {
@@ -86,10 +104,6 @@ fn main() {
             println!("Skipped {} because {}", &file.file_name().into_string().unwrap(), e);
         }
     }
-
-    println!("Complete!");
-
-    pause();
 }
 
 fn scan_path(directory: &Path) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
@@ -193,4 +207,12 @@ fn pause() {
     stdout.write(b"Press Enter to continue...").unwrap();
     stdout.flush().unwrap();
     stdin().read(&mut [0]).unwrap();
+}
+
+fn print_usage() {
+    println!("usage: music_cleaner.exe directory [options]");
+    println!("  options:");
+    println!("      -e, --extract   Moves files from subfolder to root and deletes subfolders");
+    println!("      -r, --rename    Renames files in root folder using format Title - Artist");
+    println!("      -er, --both     Moves and renames files");
 }
