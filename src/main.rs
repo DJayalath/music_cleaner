@@ -146,17 +146,22 @@ fn extract_music(files: &Vec<fs::DirEntry>, file_extensions: &Vec<&OsStr>, origi
 
 fn rename_file_with_metadata(file: fs::DirEntry, origin: &Path) {
 
-    match Tag::read_from_path(file.path()) {
+    match Tag::read_from_path(&file.path()) {
 
         Ok(tag) => {
 
             let artist = match tag.get_vorbis("artist") {
                 Some(a) => a[0].clone(),
-                None => String::from("Unknown")
+                None => String::from("Unknown"),
             };
             let title = match tag.get_vorbis("title") {
                 Some(t) => t[0].clone(),
-                None => String::from("Unknown")
+                None => String::from("Unknown"),
+            };
+            let path = file.path();
+            let ext = match path.extension() {
+                Some(e) => e,
+                None => OsStr::new("err"),
             };
 
             // Remove any Windows special characters
@@ -164,7 +169,7 @@ fn rename_file_with_metadata(file: fs::DirEntry, origin: &Path) {
             let title = title.replace(&['<', '>', ':', '"', '/', '\\', '|', '?', '*'][..], "");
 
             // Format final name and directory
-            let destination = origin.join(format!("{} - {}.flac", title, artist));
+            let destination = origin.join(format!("{} - {}.{}", title, artist, ext.to_str().unwrap()));
 
             fs::rename(file.path(), destination).expect(&format!("Failed to rename {}", file.file_name().into_string().unwrap()));
         }
