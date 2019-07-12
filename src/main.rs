@@ -12,7 +12,7 @@ use std::process;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() < 4 {
+    if args.len() != 4 {
         println!("No path/args/file extensions specified!");
         print_usage();
         process::exit(1);
