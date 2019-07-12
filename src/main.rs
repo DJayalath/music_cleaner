@@ -93,10 +93,7 @@ fn extract(origin: &Path, file_extensions: &[&std::ffi::OsStr]) {
 fn rename(origin: &Path) {
     println!("Updating directories...");
     // Rescan for renaming
-    let (files, _folders) = match scan_path(origin) {
-        Ok((fi, fo)) => (fi, fo),
-        Err(e) => panic!("ERROR: {}", e),
-    };
+    let (files, _folders) = scan_path(origin).expect("ERROR: ");
 
     println!("Renaming files...");
     // Rename!
