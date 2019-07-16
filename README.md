@@ -13,7 +13,7 @@ usage: ./music_cleaner.exe directory [options] [file extensions]
       example: flac,mp3,webm
 ```
 Example usage:
-`./music_cleaner.exe directory -er flac,mp3`
+`./music_cleaner.exe /Documents/Music -er flac,mp3`
 
 ## What does it do?
 ### Extraction
