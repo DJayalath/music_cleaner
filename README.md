@@ -1,6 +1,9 @@
 # music_cleaner
 A music directory clean up utility.
 
+## Download
+See releases [here](https://github.com/armytricks/music_cleaner/releases)
+
 ## Usage
 - Open a powershell instance in the folder containing `music_cleaner.exe`
 ```
