@@ -1,111 +1,144 @@
-extern crate metaflac;
-
-use metaflac::Tag;
-use std::env;
 use std::error::Error;
-use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::fs;
-use std::io::{stdin, stdout, Read, Write};
-use std::path::Path;
-use std::process;
+use std::fmt;
+use std::path::{Path, PathBuf};
+use structopt::StructOpt;
+
+#[derive(Debug)]
+struct CustomError(String);
+
+impl fmt::Display for CustomError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "There is an error: {}", self.0)
+    }
+}
+
+impl Error for CustomError {}
+
+#[derive(Debug, StructOpt)]
+#[structopt(
+    name = "music_cleaner",
+    about = "A utility to help organize music files."
+)]
+struct Opt {
+    #[structopt(parse(from_os_str))]
+    directory: PathBuf,
+
+    #[structopt(subcommand)]
+    cmd: Cmd,
+}
+
+#[derive(Debug, Clone, StructOpt)]
+enum Cmd {
+
+    // Moves files from subfolder to root and deletes subfolders
+    #[structopt(
+        name = "extract",
+        about = "Move files from subfolder to root and delete subfolders"
+    )]
+    Extract {
+        #[structopt(raw(use_delimiter = "true"), parse(from_os_str))]
+        extensions: Vec<OsString>,
+    },
+
+    // Renames files in format Title - Artist
+    #[structopt(
+        name = "rename",
+        about = "Rename files in format Title - Artist"
+    )]
+    Rename,
+
+    // Move and rename files
+    #[structopt(
+        name = "both",
+        about = "Extract AND rename files"
+    )]
+    Both {
+        #[structopt(raw(use_delimiter = "true"), parse(from_os_str))]
+        extensions: Vec<OsString>,
+    },
+}
 
 fn main() {
-    let args: Vec<String> = env::args().collect();
 
-    if args.len() != 4 {
-        println!("No path/args/file extensions specified!");
-        print_usage();
-        process::exit(1);
+    let opt = Opt::from_args();
+
+    if let Err(err) = execute(&opt) {
+        eprint!("Err: {}", err);
+        std::process::exit(1);
     }
 
-    let origin = Path::new(&args[1]);
-    if !origin.exists() {
-        println!("Given path doesn't exist!");
-        print_usage();
-        process::exit(1);
-    }
-
-    // Set flle extensions to keep
-    let mut file_extensions = Vec::new();
-
-    let extensions = &args[3];
-    let extensions: Vec<&str> = extensions.split(',').collect();
-    for extension in extensions {
-        file_extensions.push(OsStr::new(extension));
-    }
-
-    let option = &args[2];
-    match &option[..] {
-        "-e" | "--extract" => extract(origin, &file_extensions),
-        "-r" | "--rename" => rename(origin),
-        "-er" | "--both" => {
-            extract(origin, &file_extensions);
-            rename(origin);
-        }
-        _ => {
-            println!("Invalid option!");
-            print_usage();
-            process::exit(1);
-        }
-    }
-
-    println!("Complete!");
-
-    pause();
+    println!("Complete");
+    pause().unwrap();
 }
 
-fn extract(origin: &Path, file_extensions: &[&std::ffi::OsStr]) {
-    println!("Found:");
-    // Scan files and folders in directory
-    let (_files, folders) = match scan_path(origin) {
-        Ok((fi, fo)) => {
-            println!("  => {} files", fi.len());
-            println!("  => {} folders", fo.len());
-
-            (fi, fo)
+fn execute(opt: &Opt) -> Result<(), Box<dyn Error>> {
+    match &opt.cmd {
+        Cmd::Extract { extensions } => extract(&opt.directory, extensions),
+        Cmd::Rename => rename(&opt.directory),
+        Cmd::Both { extensions } => {
+            extract(&opt.directory, extensions)?;
+            rename(&opt.directory)?;
+            Ok(())
         }
-
-        Err(e) => panic!("ERROR: {}", e),
-    };
-
-    // Recursively scan folders for flacs
-    let mut deep_files: Vec<fs::DirEntry> = Vec::new();
-    if let Err(e) = recursive_find(&folders, &mut deep_files) {
-        println!("ERROR: {}", e);
-        process::exit(1);
     }
+}
+
+fn extract(origin: &Path, file_extensions: &[OsString]) -> Result<(), Box <dyn Error>> {
+    
+    // Check extensions exist
+    if file_extensions.is_empty() {
+        return Result::Err(Box::new(CustomError("No file extensions given!".into())));
+    }
+
+    // Scan files and folders in directory
+    println!("\nScanning...");
+    let (files, folders) = scan_path(origin)?;
+    println!("Found:");
+    println!("  => {} files", files.len());
+    println!("  => {} folders", folders.len());
+
+    // Recursively scan folders for music
+    let mut deep_files: Vec<fs::DirEntry> = Vec::new();
+    recursive_find(&folders, &mut deep_files)?;
     println!("  => {} files nested in folders", deep_files.len());
 
+    // Extract found files
     println!("\nExtracting...");
-    if let Err(e) = extract_music(&deep_files, &file_extensions, origin) {
-        panic!("ERROR: {}", e);
-    }
+    extract_music(&deep_files, &file_extensions, origin)?;
 
     // Remove folders
-    println!("Removing folders...");
+    println!("\nRemoving folders...");
     for folder in folders {
-        if !folder.file_name().into_string().unwrap().starts_with('.') {
-            fs::remove_dir_all(folder.path()).unwrap();
+        // Ignore hidden directories
+        if !folder.file_name().to_string_lossy().starts_with('.') {
+            fs::remove_dir_all(folder.path())?;
         }
     }
+
+    Ok(())
 }
 
-fn rename(origin: &Path) {
-    println!("Updating directories...");
-    // Rescan for renaming
-    let (files, _folders) = scan_path(origin).expect("ERROR: ");
+fn rename(origin: &Path) -> Result<(), Box<dyn Error>> {
 
-    println!("Renaming files...");
-    // Rename!
+    // Scan for renaming
+    println!("\nScanning...");
+    let (files, _folders) = scan_path(origin)?;
+
+    // Rename files
+    println!("\nRenaming...");
     for file in files {
         if let Err(e) = rename_file_with_metadata(&file, origin) {
             println!(
                 "Skipped {} because {}",
-                &file.file_name().into_string().unwrap(),
+                &file.file_name().to_string_lossy(),
                 e
             );
         }
     }
+
+    Ok(())
 }
 
 fn scan_path(directory: &Path) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>), std::io::Error> {
@@ -120,8 +153,10 @@ fn scan_path(directory: &Path) -> Result<(Vec<fs::DirEntry>, Vec<fs::DirEntry>),
 
         if metadata.is_file() {
             files.push(path);
-        } else {
+        } else if metadata.is_dir() {
             folders.push(path);
+        } else {
+            unreachable!();
         }
     }
 
@@ -137,9 +172,7 @@ fn recursive_find(
     }
     for folder in folders {
         let (deep_files, deep_folders) = scan_path(folder.path().as_path())?;
-        for file in deep_files {
-            found_files.push(file);
-        }
+        found_files.extend(deep_files);
         recursive_find(&deep_folders, found_files)?;
     }
 
@@ -148,14 +181,13 @@ fn recursive_find(
 
 fn extract_music(
     files: &[fs::DirEntry],
-    file_extensions: &[&OsStr],
+    file_extensions: &[OsString],
     origin: &Path,
 ) -> Result<(), Box<dyn Error>> {
     for file in files {
         let path = file.path();
-        let path = Path::new(&path);
-        if let Some(val) = path.extension() {
-            if file_extensions.contains(&val) {
+        if let Some(ext) = path.extension() {
+            if file_extensions.iter().any(|x| x == ext) {
                 let destination = origin.join(file.file_name());
                 fs::copy(file.path(), destination)?;
             }
@@ -166,7 +198,7 @@ fn extract_music(
 }
 
 fn rename_file_with_metadata(file: &fs::DirEntry, origin: &Path) -> Result<(), String> {
-    match Tag::read_from_path(&file.path()) {
+    match metaflac::Tag::read_from_path(&file.path()) {
         Ok(tag) => {
             let artist = match tag.get_vorbis("artist") {
                 Some(a) => a[0].clone(),
@@ -201,19 +233,21 @@ fn rename_file_with_metadata(file: &fs::DirEntry, origin: &Path) -> Result<(), S
     Ok(())
 }
 
-fn pause() {
-    let mut stdout = stdout();
-    let _ = stdout.write(b"Press Enter to continue...").unwrap();
-    stdout.flush().unwrap();
-    let _ = stdin().read(&mut [0]).unwrap();
+fn pause() -> Result<(), std::io::Error> {
+    use std::io::{self, Write};
+    let mut stdout = io::stdout();
+    stdout.write_all(b"Press Enter to continue...")?;
+    stdout.flush()?;
+    io::stdin().read_line(&mut String::new())?;
+    Ok(())
 }
 
-fn print_usage() {
-    println!("usage: music_cleaner.exe directory [options] [file extensions]");
-    println!("  options:");
-    println!("      -e, --extract   Moves files from subfolder to root and deletes subfolders");
-    println!("      -r, --rename    Renames files in root folder using format Title - Artist");
-    println!("      -er, --both     Moves and renames files");
-    println!("  file extensions (comma separated list):");
-    println!("      e.g. flac,mp3   Selects files to extract from folders and not delete");
-}
+// fn print_usage() {
+//     println!("usage: music_cleaner.exe directory [options] [file extensions]");
+//     println!("  options:");
+//     println!("      -e, --extract   Moves files from subfolder to root and deletes subfolders");
+//     println!("      -r, --rename    Renames files in root folder using format Title - Artist");
+//     println!("      -er, --both     Moves and renames files");
+//     println!("  file extensions (comma separated list):");
+//     println!("      e.g. flac,mp3   Selects files to extract from folders and not delete");
+// }
