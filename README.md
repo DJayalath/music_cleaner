@@ -4,8 +4,6 @@ A music directory clean up utility.
 ## Usage
 - Open a powershell instance in the folder containing `music_cleaner.exe`
 ```
-A utility to help organize music files.
-
 USAGE:
     music_cleaner <directory> <SUBCOMMAND>
 
