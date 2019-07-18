@@ -4,16 +4,26 @@ A music directory clean up utility.
 ## Usage
 - Open a powershell instance in the folder containing `music_cleaner.exe`
 ```
-usage: ./music_cleaner.exe directory [options] [file extensions]
-  options:
-      -e, --extract   Moves files from subfolder to root and deletes subfolders
-      -r, --rename    Renames files in root folder using format Title - Artist
-      -er, --both     Moves and renames files
-  file extensions (comma separated list):
-      example: flac,mp3,webm
+A utility to help organize music files.
+
+USAGE:
+    music_cleaner <directory> <SUBCOMMAND>
+
+FLAGS:
+    -h, --help       Prints help information
+    -V, --version    Prints version information
+
+ARGS:
+    <directory>    
+
+SUBCOMMANDS:
+    both       Extract AND rename files
+    extract    Move files from subfolder to root and delete subfolders
+    help       Prints this message or the help of the given subcommand(s)
+    rename     Rename files in format Title - Artist
 ```
 Example usage:
-`./music_cleaner.exe directory -er flac,mp3`
+`./music_cleaner.exe "/Documents/Music/" both flac,mp3`
 
 ## What does it do?
 ### Extraction
